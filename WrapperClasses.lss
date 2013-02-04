@@ -1,3 +1,290 @@
+
+%REM
+	Class InvoiceFactory
+	Description: Comments for Class
+%END REM
+Class InvoiceFactory As DocumentFactory
+	
+	
+	Sub New(), DocumentFactory()
+	End Sub
+	
+	%REM
+		Function GetAllInvoiecs
+		Description: Comments for Function
+	%END REM
+	Function GetAllInvoices() As InvoiceCollection
+		Set view_ = database.GetView("InvoicesByTitle")
+		
+		Set GetAllInvoices = New InvoiceCollection(view_.Allentries)
+	End Function
+	
+	%REM
+		Function GetInvoicesByTitle
+		Description: Comments for Function
+	%END REM
+	Function GetInvoicesByTitle(title As String) As InvoiceCollection
+		Set view_ = database.GetView("Invoices")
+		
+		Set GetInvoicesByTitle = New InvoiceCollection(view_.Getalldocumentsbykey(title, False))
+	End Function
+	
+	%REM
+		Function GetInvoicesByCustomer
+		Description: Comments for Function
+	%END REM
+	Function GetInvoicesByCustomer(id As String) As InvoiceCollection
+		Set view_ = database.GetView("InvoicesByCustomerID")
+		
+		Set GetInvoicesByCustomer = New InvoiceCollection(view_.GetAllDocumentsByKey(id, True))
+	End Function
+End Class
+%REM
+	Class InvoiceCollection
+	Description: Comments for Class
+%END REM
+Class InvoiceCollection As DocumentCollection
+	
+	Sub New(docs As Variant), DocumentCollection(docs)
+	End Sub
+	
+	Function getFirst() As DocumentWrapper
+		If getFirstDoc() Is Nothing Then
+			Set getFirst = Nothing
+		Else
+			Set getFirst = New Invoice(CurrentDocument)
+		End If
+	End Function
+	
+	Function getNext() As DocumentWrapper
+		If getNextDoc() Is Nothing Then
+			Set getNext = Nothing
+		Else
+			Set getNext = New Invoice(CurrentDocument)
+		End If	
+	End Function
+	
+End Class
+
+
+%REM
+	Class Invoice
+	Description: Comments for Class
+%END REM
+Class Invoice As DocumentWrapper
+	Private Customer_ As Customer
+	
+	Sub New(doc As NotesDocument), DocumentWrapper(doc)
+	End Sub
+	
+	%REM
+		Property Get Title
+		Description: Comments for Property Get
+	%END REM
+	Property Get Title As String
+		Title = GetFieldValue("Title")
+	End Property
+	
+	%REM
+		Property Get Value
+		Description: Comments for Property Get
+	%END REM
+	Property Get Value As Currency
+		Value = GetFieldValue("Value")
+	End Property
+	
+	
+	%REM
+		Property Get Customer
+		Description: Comments for Property Get
+	%END REM
+	Property Get Customer As Customer
+		If Customer_ Is Nothing Then
+			Dim fact As New CustomerFactory
+			Set Customer = fact.GetCustomerByID(CustomerID)
+		Else
+			Set Customer = Customer_
+		End If
+	End Property
+	
+	%REM
+		Property Get CustomerID
+		Description: Comments for Property Get
+	%END REM
+	Property Get CustomerID As String
+		CustomerID = GetFieldValue("CustomerID")
+	End Property
+	
+	
+	%REM
+		Property Get ValueFormattedAsString
+		Description: Comments for Property Get
+	%END REM
+	Property Get ValueFormattedAsString As String
+		ValueFormattedAsString = Format(Value, "#,###,##0.00")
+	End Property
+	
+	%REM
+		Property Get AsJSON
+		Description: Comments for Property Get
+	%END REM
+	Property Get AsJSON As String
+		AsJSON = |{| +_
+		DocumentDetailAsJSON +|, |+_
+		| "Title": "| + Sanitize(Title) + |",|+_
+		| "Value": {"Raw": |+CStr(Value) + |,"Formatted": "|+ValueFormattedAsString+|"}|+_
+		|}|
+	End Property
+	
+	%REM
+		Sub Approve
+		Description: Comments for Sub
+	%END REM
+	Sub Approve()
+		'
+	End Sub
+	
+End Class
+
+
+%REM
+	Class Customer
+	Description: Comments for Class
+%END REM
+Class Customer As DocumentWrapper
+	Sub New(doc As NotesDocument), DocumentWrapper(doc)
+	End Sub
+	
+	%REM
+		Property Get FullName
+		Description: Comments for Property Get
+	%END REM
+	Property Get FullName As String
+		FullName = FirstName + " " + LastName
+	End Property
+	
+	%REM
+		Property Get FullNameReversed
+		Description: Comments for Property Get
+	%END REM
+	Property Get FullNameReversed As String
+		FullNameReversed = LastName + ", " + FirstName
+	End Property
+	
+	Property Get FirstName As String
+		FirstName = GetFieldValue("FirstName") 
+	End Property
+	
+	Property Get LastName As String
+		LastName = GetFieldValue("LastName") 
+	End Property
+	
+	%REM
+		Property Get Invoices
+		Description: Comments for Property Get
+	%END REM
+	Property Get Invoices As InvoiceCollection
+		Dim factory As New InvoiceFactory
+		
+		Set Invoices = factory.GetInvoicesByCustomer(CustomerID)
+	End Property
+	
+	%REM
+		Property Get CustomerID
+		Description: Comments for Property Get
+	%END REM
+	Property Get CustomerID As String
+		CustomerID = GetFieldValue("CustomerID")
+	End Property
+	
+	%REM
+		Property Get AsJSON
+		Description: Comments for Property Get
+	%END REM
+	Property Get AsJSON As String
+		AsJSON = |{| +_
+		DocumentDetailAsJSON +|, |+_
+		| "ID": "| + CustomerID + |",|+_
+		| "Name": {"First": "|+Sanitize(FirstName)+|", "Last": "|+Sanitize(LastName)+|"}|+_
+		|}|
+	End Property
+	
+End Class
+
+
+%REM
+	Class CustomerCollection
+	Description: Comments for Class
+%END REM
+Class CustomerCollection As DocumentCollection
+	Sub New(docs As Variant), DocumentCollection(docs)
+	End Sub
+	
+	Function getFirst() As DocumentWrapper
+		If getFirstDoc() Is Nothing Then
+			Set getFirst = Nothing
+		Else
+			Set getFirst = New Customer(CurrentDocument)
+		End If
+	End Function
+	
+	Function getNext() As DocumentWrapper
+		If getNextDoc() Is Nothing Then
+			Set getNext = Nothing
+		Else
+			Set getNext = New Customer(CurrentDocument)
+		End If	
+	End Function
+End Class
+Class CustomerFactory As DocumentFactory
+	Sub New(), DocumentFactory()
+	End Sub
+	
+	%REM
+		Function GetAllCustomers
+		Description: Comments for Function
+	%END REM
+	Function GetAllCustomers() As CustomerCollection
+		Set view_ = database.GetView("AllCustomers")
+		
+		Set GetAllCustomers = New CustomerCollection(view_.Allentries)
+	End Function
+	
+	%REM
+		Function GetCustomersByCity
+		Description: Comments for Function
+	%END REM
+	Function GetCustomersByCity(city As String) As CustomerCollection
+		Set view_ = database.GetView("CustomersByCity")
+		
+		Set GetCustomersByCity = New CustomerCollection(view_.Getalldocumentsbykey(city, False))
+	End Function
+	
+	%REM
+		Function GetCustomerByID
+		Description: Comments for Function
+	%END REM
+	Function GetCustomerByID(id As String) As Customer
+		Set view_ = database.GetView("CustomersByID")
+		
+		Set GetCustomerByID = New Customer(view_.getDocumentByKey(id, True))
+	End Function
+End Class
+
+
+%REM
+
+***********************************************************************
+
+
+	BELOW ARE THE BASE CLASSES ON WHICH THEY ARE DERIVED.....
+
+
+***********************************************************************
+
+
+%ENDREM
+
 %REM
   Class DocumentFactory
 	Description: Comments for Class
