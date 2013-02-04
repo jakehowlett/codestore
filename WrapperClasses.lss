@@ -1,0 +1,276 @@
+%REM
+  Class DocumentFactory
+	Description: Comments for Class
+%END REM
+Class DocumentFactory
+	Private Database_ As NotesDatabase 
+	Private view_ As NotesView
+	
+	%REM
+		Sub New
+		Description: Comments for Sub
+	%END REM
+	Sub New()
+		Dim session As New NotesSession
+		Set Database_ = session.Currentdatabase
+	End Sub
+	
+	%REM
+		Property Get Database
+		Description: Comments for Property Get
+	%END REM
+	Property Get Database As NotesDatabase
+		Set Database = Database_
+	End Property
+	
+	%REM
+		Sub printJSONFullArrayToWeb
+		Description: Comments for Sub
+	%END REM
+	Sub printJSONArrayToWebFull(coll As DocumentCollection)
+		Call printJSONArrayToWeb(coll, False)
+	End Sub
+	
+	%REM
+		Sub printJSONFullArrayToWeb
+		Description: Comments for Sub
+	%END REM
+	Sub printJSONArrayToWebPickerFriendly(coll As DocumentCollection)
+		Call printJSONArrayToWeb(coll, True)
+	End Sub
+	
+	%REM
+		Sub printJSONArrayToWeb
+		Description: Comments for Sub
+	%END REM
+	Private Sub printJSONArrayToWeb(coll As DocumentCollection, pickerFriendly As Boolean)
+		Dim o As Variant, Processed As Integer, buffer As String
+		
+		Print "["
+		
+		Set o = coll.getFirst()
+		
+		While Not o Is Nothing
+			Processed = Processed + 1
+			
+			If pickerFriendly Then
+				buffer = o.AsPickerReadyJSON
+			Else
+				buffer = o.AsJSON
+			End If
+			
+			If processed < coll.count Then
+				buffer=buffer+","
+			End If
+			
+			Print buffer
+			
+			Set o = coll.getNext()
+		Wend
+
+		Print "]"
+	End Sub
+End Class
+%REM
+	Class DocumentWrapper
+	Description: Comments for Class
+%END REM
+Class DocumentWrapper
+	Private document_ As NotesDocument
+	%REM
+		Sub New
+		Description: Comments for Sub
+	%END REM
+	Sub New(doc As NotesDocument)
+		Set document_ = doc 
+	End Sub
+	
+	'Document
+	Property Get Document As NotesDocument
+		Set Document = document_
+	End Property
+	
+	%REM
+		Property Get AsJSON
+		Description: Comments for Property Get
+	%END REM
+	Property Get AsJSON As String
+		'OVERRIDE THIS!
+		AsJSON = "{}"
+	End Property
+	
+	%REM
+		Property Get DocumentDetailAsJSON
+		Description: Comments for Property Get
+	%END REM
+	Private Property Get DocumentDetailAsJSON As String
+		DocumentDetailAsJSON = | "Document": {|+_
+		|  "UNID": "| + document.universalID + |",|+_
+		|  "Form": "|+GetFieldValue("Form")+|",|+_
+		|  "Created": new Date(|+Format(document.created, "yyyy")+|, (|+Format(document.created, "m")+|-1), |+Format(document.created, "dd")+|), |+_
+		|  "Modified": new Date(|+Format(document.Lastmodified, "yyyy")+|, (|+Format(document.Lastmodified, "m")+|-1), |+Format(document.Lastmodified, "dd")+|)|+_
+		| }|
+	End Property
+	
+	%REM
+		Function getFieldValue
+		Description: Comments for Function
+	%END REM
+	Function GetFieldValue(fieldName As String) As Variant
+		getFieldValue = document_.Getitemvalue(fieldName)(0)
+	End Function
+	
+	%REM
+		Function Sanitize
+		Description: Escapes the " so as not to break the JSON
+	%END REM
+	Function Sanitize(s As String) As String
+		Sanitize = Replace(s, |"|, |\"|)
+	End Function
+	
+	
+	%REM
+		Sub Save
+		Description: Comments for Sub
+	%END REM
+	Sub Save() 
+		Call document.save(True, True)
+	End Sub
+End Class
+
+
+
+%REM
+	Base "abstract" class to build collections of document-based objects upon
+%ENDREM
+
+Class DocumentCollection
+	Private Navigator_ As NotesViewNavigator
+	Private Collection_ As NotesDocumentCollection
+	Private Entries_ As NotesViewEntryCollection
+	Private Entry_ As NotesViewEntry
+	Private Document_ As NotesDocument
+	
+	%REM
+		Sub New
+		Description: Comments for Sub
+	%END REM
+	Sub New (docs As Variant)
+		If docs IsA "NotesViewNavigator" Then
+			Set Navigator_ = docs
+		ElseIf docs IsA "NotesDocumentCollection" Then
+			Set Collection_ = docs
+			
+		ElseIf docs IsA "NotesViewEntryCollection" Then
+			Set Entries_ = docs
+		Else
+			
+		End If
+	End Sub
+	
+	%REM
+		Function getFirst
+		Description: Comments for Function
+	%END REM
+	Function getFirst() As DocumentWrapper
+		'OVERRIDE
+	End Function
+	
+	%REM
+		Function getFirst
+		Description: Comments for Function
+	%END REM
+	Function getNext() As DocumentWrapper
+		'OVERRIDE
+	End Function
+	
+	%REM
+		Property Get CurrentDocument
+		Description: Comments for Property Get
+	%END REM
+	Property Get CurrentDocument As NotesDocument
+		Set CurrentDocument = Document_
+	End Property
+	
+	Private Function getFirstDoc() As NotesDocument
+		If Not Navigator_ Is Nothing Then 
+			Set Entry_ = Navigator_.Getfirst()
+			
+			If Entry_ Is Nothing Then
+				Set getFirstDoc = Nothing
+			Else
+				Set Document_ = Entry_.Document
+				Set getFirstDoc = Document_
+			End If
+			
+		ElseIf Not Entries_ Is Nothing Then
+			Set Entry_ = Entries_.Getfirstentry()
+			
+			If Entry_ Is Nothing Then
+				Set getFirstDoc = Nothing
+			Else
+				Set Document_ = Entry_.Document
+				Set getFirstDoc = Document_
+			End If
+			
+		ElseIf Not Collection_ Is Nothing Then
+			Set Document_ = Collection_.Getfirstdocument()
+			
+			If Document_ Is Nothing Then
+				Set getFirstDoc = Nothing
+			Else
+				Set getFirstDoc = Document_
+			End If
+			
+		End If
+		
+	End Function
+	
+	Private Function getNextDoc() As NotesDocument
+		If Not Navigator_ Is Nothing Then 
+			Set Entry_ = Navigator_.GetNext(Entry_)
+			
+			If Entry_ Is Nothing Then
+				Set getNextDoc = Nothing
+			Else
+				Set Document_ = Entry_.Document
+				Set getNextDoc = Document_
+			End If
+		ElseIf Not Entries_ Is Nothing Then
+			Set Entry_ = Entries_.GetNextentry(Entry_)
+			
+			If Entry_ Is Nothing Then
+				Set getNextDoc = Nothing
+			Else
+				Set Document_ = Entry_.Document
+				Set getNextDoc = Document_
+			End If
+			
+		ElseIf Not Collection_ Is Nothing Then
+			Set Document_ = Collection_.Getnextdocument(Document_)
+			
+			If Document_ Is Nothing Then
+				Set getNextDoc = Nothing
+			Else
+				Set getNextDoc = Document_
+			End If
+		End If
+	End Function
+	
+	%REM
+		Property Get Count
+		Description: Comments for Property Get
+	%END REM
+	Property Get Count As Long
+		If Not Collection_ Is Nothing Then
+			Count = Collection_.Count	
+		ElseIf Not Navigator_ Is Nothing Then
+			Count = Navigator_.Count
+		ElseIf Not Entries_ Is Nothing Then
+			Count = Entries_.Count
+		Else
+			Count = 0			
+		End If
+	End Property
+	
+End Class
