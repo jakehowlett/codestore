@@ -1,3 +1,44 @@
+%REM
+	EXAMPLE OF USE OF WRAPPER CLASSES
+%END REM
+
+Sub Initialize
+	Dim factory As New InvoiceFactory
+	Dim invoices As InvoiceCollection
+	Dim invoice As Invoice
+	
+	Set invoices = factory.GetAllInvoices()
+	
+	If invoices.Count > 0 Then
+		
+		Set invoice	= invoices.getFirst()
+		
+		While Not invoice Is Nothing
+			
+			Print "<h1>" + invoice.Title + "</h1><p>" + invoice.ValueFormattedAsString + "</p>"
+			Print "<h4>As JSON</h4>"
+			Print "<p><code>" + invoice.AsJSON + "</code></p>"
+			
+			Print "<h3>Customer</h3>"
+			Print "<p>Customer's name is " + invoice.Customer.FullNameReversed + " ("+ invoice.CustomerID + "), who has " + CStr(invoice.Customer.Invoices.Count) + " invoices in total.</p>"
+			Print "<h4>As JSON</h4>"
+			Print "<p><code>" + invoice.Customer.AsJSON + "</code></p>"
+			
+			Print "<hr>"
+			
+			
+			Set invoice = invoices.getNext()
+		Wend
+		
+	Else
+		Print "NO INVOICES ("+CStr(invoices.count)")"
+	End If
+End Sub
+
+%REM
+	CLASSES REFERENCED BY THE DEMO CODE ABOVE
+%END REM
+
 
 %REM
 	Class InvoiceFactory
