@@ -372,14 +372,14 @@ Class DocumentFactory
 		Description: Comments for Sub
 	%END REM
 	Private Sub printJSONArrayToWeb(coll As DocumentCollection, pickerFriendly As Boolean)
-		Dim o As Variant, Processed As Integer, buffer As String
+		Dim o As Variant, buffer As String, delimiter as String
 		
-		Print "["
+		delimiter = ""
+		buffer = ""
 		
 		Set o = coll.getFirst()
 		
 		While Not o Is Nothing
-			Processed = Processed + 1
 			
 			If pickerFriendly Then
 				buffer = o.AsPickerReadyJSON
@@ -387,16 +387,15 @@ Class DocumentFactory
 				buffer = o.AsJSON
 			End If
 			
-			If processed < coll.count Then
-				buffer=buffer+","
-			End If
+			buffer=delimiter+buffer
 			
-			Print buffer
+			delimiter = ","
 			
 			Set o = coll.getNext()
 		Wend
-
-		Print "]"
+	
+		Print "[" + buffer + "]"
+		
 	End Sub
 End Class
 %REM
